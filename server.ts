@@ -134,22 +134,27 @@ app.get("/api/instagram-callback", async (req, res) => {
       body: tokenForm,
     });
     const shortData = await shortRes.json();
-    if (!shortRes.ok) throw new Error(JSON.stringify(shortData));
+    console.log("Short-lived token response:", JSON.stringify(shortData));
+    if (!shortRes.ok) throw new Error("Short-token exchange failed: " + JSON.stringify(shortData));
 
     const { access_token: shortToken, user_id: igUserId } = shortData;
+    if (!shortToken || !igUserId) {
+      throw new Error("Short-token response missing access_token/user_id: " + JSON.stringify(shortData));
+    }
 
     // Exchange short-lived -> long-lived token (60 days)
-    const longRes = await fetch(
-      `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${process.env.META_CLIENT_SECRET}&access_token=${shortToken}`
-    );
+    const longUrl = `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${encodeURIComponent(process.env.META_CLIENT_SECRET || "")}&access_token=${encodeURIComponent(shortToken)}`;
+    const longRes = await fetch(longUrl);
     const longData = await longRes.json();
-    if (!longRes.ok) throw new Error(JSON.stringify(longData));
+    console.log("Long-lived token response:", JSON.stringify(longData));
+    if (!longRes.ok) throw new Error("Long-token exchange failed: " + JSON.stringify(longData));
 
     // Fetch the connected Instagram username
     const profileRes = await fetch(
-      `https://graph.instagram.com/v21.0/${igUserId}?fields=username&access_token=${longData.access_token}`
+      `https://graph.instagram.com/v21.0/${igUserId}?fields=username&access_token=${encodeURIComponent(longData.access_token)}`
     );
     const profileData = await profileRes.json();
+    console.log("Profile response:", JSON.stringify(profileData));
 
     const db = getDb();
     await db.collection("accounts").doc(String(igUserId)).set({
