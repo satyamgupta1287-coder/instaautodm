@@ -88,6 +88,85 @@ app.post("/api/webhooks/instagram", async (req, res) => {
   }
 });
 
+// Step 1: "Connect Account" button hits this — redirects to Instagram's authorization page
+app.get("/api/instagram-auth", (req, res) => {
+  const uid = req.query.uid as string;
+  if (!uid) return res.status(400).send("Missing uid");
+
+  const redirectUri = `${process.env.APP_URL}/api/instagram-callback`;
+  const scope = [
+    "instagram_business_basic",
+    "instagram_business_manage_messages",
+    "instagram_business_manage_comments",
+    "instagram_business_content_publish",
+    "instagram_business_manage_insights",
+  ].join(",");
+
+  const authUrl = `https://www.instagram.com/oauth/authorize?client_id=${process.env.META_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&state=${uid}`;
+
+  res.redirect(authUrl);
+});
+
+// Step 2: Instagram redirects back here with a ?code= after the user approves
+app.get("/api/instagram-callback", async (req, res) => {
+  const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
+  const uid = state;
+
+  if (error || !code || !uid) {
+    return res.redirect(`/dashboard?connect=error`);
+  }
+
+  try {
+    const redirectUri = `${process.env.APP_URL}/api/instagram-callback`;
+
+    // Exchange code -> short-lived token
+    const tokenForm = new URLSearchParams({
+      client_id: process.env.META_CLIENT_ID || "",
+      client_secret: process.env.META_CLIENT_SECRET || "",
+      grant_type: "authorization_code",
+      redirect_uri: redirectUri,
+      code,
+    });
+
+    const shortRes = await fetch("https://api.instagram.com/oauth/access_token", {
+      method: "POST",
+      body: tokenForm,
+    });
+    const shortData = await shortRes.json();
+    if (!shortRes.ok) throw new Error(JSON.stringify(shortData));
+
+    const { access_token: shortToken, user_id: igUserId } = shortData;
+
+    // Exchange short-lived -> long-lived token (60 days)
+    const longRes = await fetch(
+      `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${process.env.META_CLIENT_SECRET}&access_token=${shortToken}`
+    );
+    const longData = await longRes.json();
+    if (!longRes.ok) throw new Error(JSON.stringify(longData));
+
+    // Fetch the connected Instagram username
+    const profileRes = await fetch(
+      `https://graph.instagram.com/v21.0/${igUserId}?fields=username&access_token=${longData.access_token}`
+    );
+    const profileData = await profileRes.json();
+
+    const db = getDb();
+    await db.collection("accounts").doc(String(igUserId)).set({
+      uid,
+      igUserId: String(igUserId),
+      username: profileData.username || null,
+      accessToken: longData.access_token,
+      tokenExpiresIn: longData.expires_in,
+      connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    res.redirect(`/dashboard?connect=success`);
+  } catch (err) {
+    console.error("Instagram OAuth callback error:", err);
+    res.redirect(`/dashboard?connect=error`);
+  }
+});
+
 // Instagram Webhook Endpoint (GET - For Meta Verification)
 app.get("/api/webhooks/instagram", (req, res) => {
   const mode = req.query["hub.mode"];

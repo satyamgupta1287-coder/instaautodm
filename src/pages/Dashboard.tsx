@@ -47,7 +47,12 @@ export function Dashboard() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Here's what's happening with your Instagram automations today.</p>
         </div>
-        <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-600/20">
+        <button
+          onClick={() => {
+            if (user) window.location.href = `/api/instagram-auth?uid=${user.uid}`;
+          }}
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-600/20"
+        >
           <Instagram className="w-4 h-4" />
           Connect Account
         </button>
