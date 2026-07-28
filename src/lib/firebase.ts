@@ -12,7 +12,7 @@ const firebaseConfig = {
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
+const db = getFirestore(app, "ai-studio-instaautodm-39d59546-5474-4670-bcaa-a3bcc1ca517d");
 const auth = getAuth(app);
 
 export { app, db, auth };
