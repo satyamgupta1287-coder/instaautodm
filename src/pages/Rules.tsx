@@ -1,4 +1,4 @@
-import { Plus, Search, MoreHorizontal, Play, Square, Settings2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Play, Square, Settings2, ListOrdered } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Rule } from "../types";
 import { motion } from "motion/react";

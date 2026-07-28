@@ -1,18 +1,19 @@
-import { Instagram, Activity, Zap, CheckCircle, BarChart3, ArrowUpRight } from "lucide-react";
+import { Instagram, Activity, Zap, CheckCircle, BarChart3, ArrowUpRight, Plus } from "lucide-react";
 import { motion } from "motion/react";
 import { useState, useEffect } from "react";
 import { db } from "../lib/firebase";
-import { collection, query, getDocs } from "firebase/firestore";
+import { collection, query, getDocs, where } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 
 export function Dashboard() {
   const [stats, setStats] = useState({ rulesCount: '0', logsCount: '0', successRate: '100%' });
+  const [accounts, setAccounts] = useState<any[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
     if (!user) return;
     
-    const fetchStats = async () => {
+    const fetchData = async () => {
       try {
         const rulesSnapshot = await getDocs(collection(db, "rules"));
         const logsSnapshot = await getDocs(collection(db, "logs"));
@@ -26,13 +27,23 @@ export function Dashboard() {
           logsCount: totalLogs.toString(),
           successRate
         });
+
+        const accountsQ = query(collection(db, "accounts"), where("uid", "==", user.uid));
+        const accountsSnapshot = await getDocs(accountsQ);
+        setAccounts(accountsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } catch (error) {
-        console.error("Error fetching stats:", error);
+        console.error("Error fetching data:", error);
       }
     };
     
-    fetchStats();
+    fetchData();
   }, [user]);
+
+  const handleConnect = () => {
+    if (user) {
+      window.location.href = `/api/instagram-auth?uid=${user.uid}`;
+    }
+  };
 
   const statsCards = [
     { name: 'Total Automations', value: stats.rulesCount, change: '+1', icon: Zap, trend: 'up' },
@@ -47,7 +58,7 @@ export function Dashboard() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Here's what's happening with your Instagram automations today.</p>
         </div>
-        <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-600/20">
+        <button onClick={handleConnect} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm shadow-indigo-600/20">
           <Instagram className="w-4 h-4" />
           Connect Account
         </button>

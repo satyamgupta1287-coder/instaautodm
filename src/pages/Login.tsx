@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../lib/firebase";
