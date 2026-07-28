@@ -1,14 +1,21 @@
 import express from "express";
 import admin from "firebase-admin";
 
-// Initialize Firebase Admin
-if (!admin.apps.length) {
-  admin.initializeApp({
-    projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID,
-  });
+// Lazy-init Firebase Admin — only called when a route actually needs Firestore,
+// so the GET verification route below never waits on it / never crashes on it.
+function getDb() {
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      }),
+    });
+  }
+  return admin.firestore();
 }
 
-const db = admin.firestore();
 const app = express();
 app.use(express.json());
 
@@ -24,6 +31,7 @@ app.post("/api/webhooks/instagram", async (req, res) => {
     console.log("Webhook received:", JSON.stringify(body, null, 2));
 
     if (body.object === "instagram") {
+      const db = getDb();
       for (const entry of body.entry) {
         const accountId = entry.id;
         for (const change of entry.changes) {
