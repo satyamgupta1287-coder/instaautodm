@@ -2,16 +2,23 @@ import { Instagram, Activity, Zap, CheckCircle, BarChart3, ArrowUpRight } from "
 import { motion } from "motion/react";
 import { useState, useEffect } from "react";
 import { db } from "../lib/firebase";
-import { collection, query, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
+
+interface ConnectedAccount {
+  id: string;
+  username: string | null;
+}
 
 export function Dashboard() {
   const [stats, setStats] = useState({ rulesCount: '0', logsCount: '0', successRate: '100%' });
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(true);
   const { user } = useAuth();
 
   useEffect(() => {
     if (!user) return;
-    
+
     const fetchStats = async () => {
       try {
         const rulesSnapshot = await getDocs(collection(db, "rules"));
@@ -30,8 +37,21 @@ export function Dashboard() {
         console.error("Error fetching stats:", error);
       }
     };
+
+    const fetchAccounts = async () => {
+      try {
+        const q = query(collection(db, "accounts"), where("uid", "==", user.uid));
+        const snapshot = await getDocs(q);
+        setAccounts(snapshot.docs.map(doc => ({ id: doc.id, username: doc.data().username })));
+      } catch (error) {
+        console.error("Error fetching accounts:", error);
+      } finally {
+        setAccountsLoading(false);
+      }
+    };
     
     fetchStats();
+    fetchAccounts();
   }, [user]);
 
   const statsCards = [
@@ -115,22 +135,37 @@ export function Dashboard() {
             </h3>
           </div>
           <div className="p-2 flex-1">
-            <div className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-default group">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-tr from-yellow-400 via-red-500 to-fuchsia-600 rounded-full flex items-center justify-center p-[2px]">
-                  <div className="w-full h-full bg-white dark:bg-black rounded-full flex items-center justify-center">
-                    <Instagram className="w-5 h-5 text-slate-900 dark:text-white" />
+            {accountsLoading ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400 p-3">Loading...</p>
+            ) : accounts.length === 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400 p-3">No Instagram account connected yet.</p>
+            ) : (
+              accounts.map((acc) => (
+                <div key={acc.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-default group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-tr from-yellow-400 via-red-500 to-fuchsia-600 rounded-full flex items-center justify-center p-[2px]">
+                      <div className="w-full h-full bg-white dark:bg-black rounded-full flex items-center justify-center">
+                        <Instagram className="w-5 h-5 text-slate-900 dark:text-white" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        {acc.username ? `@${acc.username}` : acc.id}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Professional Account</p>
+                    </div>
                   </div>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">@yourbusiness</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Professional Account</p>
-                </div>
-              </div>
-              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-            </div>
-            
-            <button className="w-full mt-2 py-2 px-3 flex items-center justify-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors border border-dashed border-slate-200 dark:border-white/10">
+              ))
+            )}
+
+            <button
+              onClick={() => {
+                if (user) window.location.href = `/api/instagram-auth?uid=${user.uid}`;
+              }}
+              className="w-full mt-2 py-2 px-3 flex items-center justify-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 rounded-md transition-colors border border-dashed border-slate-200 dark:border-white/10"
+            >
               + Add another account
             </button>
           </div>
