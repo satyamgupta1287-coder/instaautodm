@@ -143,7 +143,7 @@ app.get("/api/instagram-callback", async (req, res) => {
     }
 
     // Exchange short-lived -> long-lived token (60 days)
-    const longUrl = `https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=${encodeURIComponent(process.env.META_CLIENT_SECRET || "")}&access_token=${encodeURIComponent(shortToken)}`;
+    const longUrl = `https://graph.instagram.com/v21.0/access_token?grant_type=ig_exchange_token&client_secret=${encodeURIComponent(process.env.META_CLIENT_SECRET || "")}&access_token=${encodeURIComponent(shortToken)}`;
     const longRes = await fetch(longUrl);
     const longData = await longRes.json();
     console.log("Long-lived token response:", JSON.stringify(longData));
