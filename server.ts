@@ -1,5 +1,6 @@
 import express from "express";
 import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 
 // Lazy-init Firebase Admin — only called when a route actually needs Firestore,
 // so the GET verification route below never waits on it / never crashes on it.
@@ -13,7 +14,7 @@ function getDb() {
       }),
     });
   }
-  return admin.firestore();
+  return getFirestore(admin.app(), "ai-studio-instaautodm-39d59546-5474-4670-bcaa-a3bcc1ca517d");
 }
 
 const app = express();
