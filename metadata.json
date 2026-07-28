@@ -1,0 +1,6 @@
+{
+  "name": "InstaAutoDM",
+  "description": "Automatically send Instagram Direct Messages based on comment keywords.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
